@@ -1,0 +1,46 @@
+name: autogen
+on:
+  push:
+    branches: [master]
+    paths:
+      - "lua/**.lua"
+      - "examples/**.lua"
+      - "stylua.toml"
+      - "README.md"
+      - ".github/workflows/*.yml"
+
+# Cancel any in-progress CI runs for a PR if it is updated
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+
+jobs:
+  autogen:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: panvimdoc
+        # uses: kdheepak/panvimdoc@v2.7.3
+        uses: kdheepak/panvimdoc@v3.0.3
+        with:
+          vimdoc: highlight-undo
+          description: highlight undo / redo
+      - name: Apply stylua
+        uses: JohnnyMorganz/stylua-action@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --config-path=stylua.toml lua/
+          version: 0.14.1
+      - name: Push changes
+        if: ${{ !env.ACT }}
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore(build): auto-generate vimdoc / stylua"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
