@@ -7,12 +7,25 @@ local M = {
   config = {
     hlgroup = 'HighlightUndo',
     duration = 300,
+    keymaps = {
+      {'n', 'u', 'undo', {}},
+      {'n', '<C-r>', 'redo', {}},
+    }
   },
   timer = (vim.uv or vim.loop).new_timer(),
   should_detach = true,
 }
 
 local usage_namespace = api.nvim_create_namespace('highlight_undo')
+
+function M.call_original_kemap(map)
+  if type(map) == 'string' then
+    vim.cmd(map)
+  elseif type(map) == 'function' then
+      map()
+  end
+end
+
 
 function M.on_bytes(
   ignored, ---@diagnostic disable-line
@@ -64,7 +77,7 @@ function M.highlight_undo(bufnr, command)
     on_bytes = M.on_bytes,
   })
   M.should_detach = false
-  vim.cmd(command)
+  command()
   M.should_detach = true
 end
 
@@ -87,12 +100,14 @@ function M.setup(config)
   })
 
   M.config = vim.tbl_deep_extend('keep', config or {}, M.config)
-  vim.keymap.set('n', 'u', function()
-    M.highlight_undo(0, 'undo')
-  end)
-  vim.keymap.set('n', '<C-r>', function()
-    M.highlight_undo(0, 'redo')
-  end)
+  for _, mapping in ipairs(config.keymaps) do
+    vim.keymap.set(mapping[1], mapping[2], function()
+        M.highlight_undo(0, function()
+          M.call_original_kemap(mapping[3])
+        end)
+      end,
+      mapping[4])
+  end
 end
 
 return M

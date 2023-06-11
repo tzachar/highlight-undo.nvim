@@ -30,8 +30,21 @@ You can setup `highlight-undo` as follows:
 require('highlight-undo').setup({
     hlgroup = 'HighlightUndo',
     duration = 300,
+    keymaps = {
+      {'n', 'u', 'undo', {}},
+      {'n', '<C-r>', 'redo', {}},
+    }
 })
 ```
+
+## keymaps
+
+Specify which kemaps should trigger the begining and end of tracking changes
+([see here](#How the Plugin Works)). By
+default, the plugin starts tracking changes before an `undo` or a `redo`.
+
+Keymaps are specified in the same format as `vim.keymap.set` accepts: mode, lhs,
+rhs, opts. Maps are passed verbatim to `vim.keymap.set`.
 
 ## `hlgroup`
 
@@ -48,6 +61,6 @@ The duration (in milliseconds) highligh changes. Default is 300.
 
 # How the Plugin Works
 
-`highlight-undo` will remap the `u` and `<C-r>` keys (for undo and redo) and
+`highlight-undo` will remap the `u` and `<C-r>` keys (for undo and redo, be default) and
 hijack the calls. By utilizing nvim_buf_attach to get indications for changes in the
-buffer, we can achieve very low overhead.
+buffer, the plugin can achieve very low overhead.
