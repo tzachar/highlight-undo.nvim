@@ -100,7 +100,7 @@ function M.setup(config)
   })
 
   M.config = vim.tbl_deep_extend('keep', config or {}, M.config)
-  for _, mapping in ipairs(config.keymaps) do
+  for _, mapping in ipairs(M.config.keymaps) do
     vim.keymap.set(mapping[1], mapping[2], function()
         M.highlight_undo(0, function()
           M.call_original_kemap(mapping[3])
