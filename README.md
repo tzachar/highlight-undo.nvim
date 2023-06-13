@@ -40,7 +40,7 @@ require('highlight-undo').setup({
 ## keymaps
 
 Specify which kemaps should trigger the begining and end of tracking changes
-([see here](#How the Plugin Works)). By
+([see here](#how-the-plugin-works)). By
 default, the plugin starts tracking changes before an `undo` or a `redo`.
 
 Keymaps are specified in the same format as `vim.keymap.set` accepts: mode, lhs,
