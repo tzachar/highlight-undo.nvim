@@ -39,7 +39,7 @@ require('highlight-undo').setup({
 
 ## keymaps
 
-Specify which kemaps should trigger the begining and end of tracking changes
+Specify which kemaps should trigger the beginning and end of tracking changes
 ([see here](#how-the-plugin-works)). By
 default, the plugin starts tracking changes before an `undo` or a `redo`.
 
