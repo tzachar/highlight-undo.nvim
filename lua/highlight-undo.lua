@@ -5,13 +5,20 @@ local api = vim.api
 
 local M = {
   config = {
-    hlgroup = 'HighlightUndo',
-    undo_hlgroup = nil,
-    redo_hlgroup = nil,
     duration = 300,
-    keymaps = {
-      { 'n', 'u', 'undo', {} },
-      { 'n', '<C-r>', 'redo', {} },
+    undo = {
+      hlgroup = 'HighlightUndo',
+      mode = 'n',
+      lhs = 'u',
+      map = 'undo',
+      opts = {},
+    },
+    redo = {
+      hlgroup = 'HighlightUndo',
+      mode = 'n',
+      lhs = '<C-r>',
+      map = 'redo',
+      opts = {},
     },
   },
   timer = (vim.uv or vim.loop).new_timer(),
@@ -104,19 +111,19 @@ function M.setup(config)
 
   M.config = vim.tbl_deep_extend('keep', config or {}, M.config)
 
-  local undo_mapping = M.config.keymaps[1]
-  vim.keymap.set(undo_mapping[1], undo_mapping[2], function()
-    M.highlight_undo(0, M.config.undo_hlgroup or M.config.hlgroup, function()
-      M.call_original_kemap(undo_mapping[3])
+  local undo = M.config.undo
+  vim.keymap.set(undo.mode, undo.lhs, function()
+    M.highlight_undo(0, undo.hlgroup, function()
+      M.call_original_kemap(undo.map)
     end)
-  end, undo_mapping[4])
+  end, undo.opts)
 
-  local redo_mapping = M.config.keymaps[2]
-  vim.keymap.set(redo_mapping[1], redo_mapping[2], function()
-    M.highlight_undo(0, M.config.redo_hlgroup or M.config.hlgroup, function()
-      M.call_original_kemap(redo_mapping[3])
+  local redo = M.config.redo
+  vim.keymap.set(redo.mode, redo.lhs, function()
+    M.highlight_undo(0, redo.hlgroup, function()
+      M.call_original_kemap(redo.map)
     end)
-  end, redo_mapping[4])
+  end, redo.opts)
 end
 
 return M
