@@ -5,15 +5,25 @@ local api = vim.api
 
 local M = {
   config = {
-    hlgroup = 'HighlightUndo',
     duration = 300,
-    keymaps = {
-      {'n', 'u', 'undo', {}},
-      {'n', '<C-r>', 'redo', {}},
-    }
+    undo = {
+      hlgroup = 'HighlightUndo',
+      mode = 'n',
+      lhs = 'u',
+      map = 'undo',
+      opts = {},
+    },
+    redo = {
+      hlgroup = 'HighlightUndo',
+      mode = 'n',
+      lhs = '<C-r>',
+      map = 'redo',
+      opts = {},
+    },
   },
   timer = (vim.uv or vim.loop).new_timer(),
   should_detach = true,
+  current_hlgroup = nil,
 }
 
 local usage_namespace = api.nvim_create_namespace('highlight_undo')
@@ -22,10 +32,9 @@ function M.call_original_kemap(map)
   if type(map) == 'string' then
     vim.cmd(map)
   elseif type(map) == 'function' then
-      map()
+    map()
   end
 end
-
 
 function M.on_bytes(
   ignored, ---@diagnostic disable-line
@@ -62,7 +71,7 @@ function M.on_bytes(
   -- )
   -- defer highligh till after changes take place..
   vim.schedule(function()
-    vim.highlight.range(bufnr, usage_namespace, M.config.hlgroup, { start_row, start_column }, {
+    vim.highlight.range(bufnr, usage_namespace, M.current_hlgroup, { start_row, start_column }, {
       start_row + new_end_row,
       start_column + new_end_col,
     })
@@ -72,7 +81,8 @@ function M.on_bytes(
   -- return true
 end
 
-function M.highlight_undo(bufnr, command)
+function M.highlight_undo(bufnr, hlgroup, command)
+  M.current_hlgroup = hlgroup
   api.nvim_buf_attach(bufnr, false, {
     on_bytes = M.on_bytes,
   })
@@ -100,14 +110,20 @@ function M.setup(config)
   })
 
   M.config = vim.tbl_deep_extend('keep', config or {}, M.config)
-  for _, mapping in ipairs(M.config.keymaps) do
-    vim.keymap.set(mapping[1], mapping[2], function()
-        M.highlight_undo(0, function()
-          M.call_original_kemap(mapping[3])
-        end)
-      end,
-      mapping[4])
-  end
+
+  local undo = M.config.undo
+  vim.keymap.set(undo.mode, undo.lhs, function()
+    M.highlight_undo(0, undo.hlgroup, function()
+      M.call_original_kemap(undo.map)
+    end)
+  end, undo.opts)
+
+  local redo = M.config.redo
+  vim.keymap.set(redo.mode, redo.lhs, function()
+    M.highlight_undo(0, redo.hlgroup, function()
+      M.call_original_kemap(redo.map)
+    end)
+  end, redo.opts)
 end
 
 return M
