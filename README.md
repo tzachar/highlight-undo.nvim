@@ -41,6 +41,7 @@ require('highlight-undo').setup({
     map = 'redo',
     opts = {}
   },
+  highlight_for_count = true,
 })
 ```
 
@@ -65,6 +66,14 @@ use any other group you desire.
 ## `duration`
 
 The duration (in milliseconds) to highlight changes. Default is 300.
+
+## highlight_for_count
+
+Enable support for highlighting when a `<count>` is provided before the key.
+If set to `false` it will only highlight when the mapping is not prefixed with a
+`<count>`.
+
+Default: `true`
 
 ## How the Plugin Works
 

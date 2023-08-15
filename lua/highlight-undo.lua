@@ -20,6 +20,7 @@ local M = {
       map = 'redo',
       opts = {},
     },
+    highlight_for_count = true,
   },
   timer = (vim.uv or vim.loop).new_timer(),
   should_detach = true,
@@ -87,7 +88,13 @@ function M.highlight_undo(bufnr, hlgroup, command)
     on_bytes = M.on_bytes,
   })
   M.should_detach = false
-  command()
+  if M.config.highlight_for_count then
+    for _ = 1, vim.v.count1 do
+      command()
+    end
+  else
+    command()
+  end
   M.should_detach = true
 end
 
@@ -113,16 +120,26 @@ function M.setup(config)
 
   local undo = M.config.undo
   vim.keymap.set(undo.mode, undo.lhs, function()
-    M.highlight_undo(0, undo.hlgroup, function()
-      M.call_original_kemap(undo.map)
-    end)
+    if M.config.highlight_for_count or vim.v.count == 0 then
+      M.highlight_undo(0, undo.hlgroup, function()
+        M.call_original_kemap(undo.map)
+      end)
+    else
+      local keys = vim.api.nvim_replace_termcodes(vim.v.count .. 'u', true, false, true)
+      vim.api.nvim_feedkeys(keys, 'n', false)
+    end
   end, undo.opts)
 
   local redo = M.config.redo
   vim.keymap.set(redo.mode, redo.lhs, function()
-    M.highlight_undo(0, redo.hlgroup, function()
-      M.call_original_kemap(redo.map)
-    end)
+    if M.config.highlight_for_count or vim.v.count == 0 then
+      M.highlight_undo(0, redo.hlgroup, function()
+        M.call_original_kemap(redo.map)
+      end)
+    else
+      local keys = vim.api.nvim_replace_termcodes(vim.v.count .. '<c-r>', true, false, true)
+      vim.api.nvim_feedkeys(keys, 'n', false)
+    end
   end, redo.opts)
 end
 
