@@ -110,7 +110,7 @@ function M.clear_highlights(bufnr)
 end
 
 ---makes highlight-undo respect `foldopen=undo` (#18)
-local function openFolsOnUndo()
+local function openFoldsOnUndo()
   if vim.tbl_contains(vim.opt.foldopen:get(), "undo") then
     vim.cmd.normal({"zv",bang = true})
   end
@@ -135,7 +135,7 @@ function M.setup(config)
       local keys = vim.api.nvim_replace_termcodes(vim.v.count .. 'u', true, false, true)
       vim.api.nvim_feedkeys(keys, 'n', false)
     end
-    openFolsOnUndo()
+    openFoldsOnUndo()
   end, undo.opts)
 
   local redo = M.config.redo
@@ -148,7 +148,7 @@ function M.setup(config)
       local keys = vim.api.nvim_replace_termcodes(vim.v.count .. '<c-r>', true, false, true)
       vim.api.nvim_feedkeys(keys, 'n', false)
     end
-    openFolsOnUndo()
+    openFoldsOnUndo()
   end, redo.opts)
 end
 
