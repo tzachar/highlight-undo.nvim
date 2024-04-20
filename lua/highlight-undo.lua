@@ -14,7 +14,7 @@ local M = {
       opts = {},
     },
     redo = {
-      hlgroup = 'HighlightUndo',
+      hlgroup = 'HighlightRedo',
       mode = 'n',
       lhs = '<C-r>',
       map = 'redo',
@@ -118,6 +118,11 @@ end
 
 function M.setup(config)
   api.nvim_set_hl(0, 'HighlightUndo', {
+    fg = '#dcd7ba',
+    bg = '#2d4f67',
+    default = true,
+  })
+  api.nvim_set_hl(0, 'HighlightRedo', {
     fg = '#dcd7ba',
     bg = '#2d4f67',
     default = true,
