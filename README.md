@@ -35,7 +35,7 @@ require('highlight-undo').setup({
     opts = {}
   },
   redo = {
-    hlgroup = 'HighlightUndo',
+    hlgroup = 'HighlightRedo',
     mode = 'n',
     lhs = '<C-r>',
     map = 'redo',
@@ -58,10 +58,10 @@ rhs, opts. Maps are passed verbatim to `vim.keymap.set`.
 
 Specify the highlighting group to use.
 
-By default, `highlight-undo` will use the `HighlightUndo` highlight
-group, which it defines upon startup. If the group is already defined
-elsewhere in your config then it will not be overwritten. You can also
-use any other group you desire.
+By default, `highlight-undo` will use `HighlightUndo` for the undo action and
+`HighlightRedo` for the redo action. Both of these groups, are defined when the
+plugin is loaded. If the groups are already defined elsewhere in your config
+then they will not be overwritten. You can also use others groups, if desired.
 
 ## `duration`
 
