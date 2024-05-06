@@ -71,11 +71,21 @@ function M.on_bytes(
   --   }
   -- )
   -- defer highligh till after changes take place..
+  local num_lines = api.nvim_buf_line_count(0)
+  local end_row = start_row + new_end_row
+  local end_col = start_column + new_end_col
+  if end_row >= num_lines then
+    -- we are past the last line. highligh till the last column
+    end_col = #api.nvim_buf_get_lines(0, -2, -1, false)[1]
+  end
   vim.schedule(function()
-    vim.highlight.range(bufnr, usage_namespace, M.current_hlgroup, { start_row, start_column }, {
-      start_row + new_end_row,
-      start_column + new_end_col,
-    })
+    vim.highlight.range(
+      bufnr,
+      usage_namespace,
+      M.current_hlgroup,
+      { start_row, start_column },
+      { end_row, end_col}
+    )
     M.clear_highlights(bufnr)
   end)
   --detach
