@@ -1,35 +1,47 @@
--- This module highlights reference usages and the corresponding
--- definition on cursor hold.
-
 local api = vim.api
 
 local M = {
   config = {
-    duration = 300,
-    undo = {
-      hlgroup = 'HighlightUndo',
-      mode = 'n',
-      lhs = 'u',
-      map = 'undo',
-      opts = {},
+    highlight_for_count = true, -- Should '3p' or '5u' be highlighted
+    duration = 300, -- Time in ms for the highlight
+    actions = {
+      Undo = {
+        disabled = false,
+        fg = '#dcd7ba',
+        bg = '#2d4f67',
+        mode = 'n',
+        keymap = 'u', -- mapping
+        cmd = 'undo', -- Vim command
+        opts = {}, -- silent = true, desc = "", ...
+      },
+      Redo = {
+        disabled = false,
+        fg = '#dcd7ba',
+        bg = '#2d4f67',
+        mode = 'n',
+        keymap = '<C-r>',
+        cmd = 'redo',
+        opts = {},
+      },
+      Pasted = {
+        disabled = false,
+        fg = '#dcd7ba',
+        bg = '#2d4f67',
+        mode = 'n',
+        keymap = 'p',
+        cmd = 'put',
+        opts = {},
+      },
     },
-    redo = {
-      hlgroup = 'HighlightRedo',
-      mode = 'n',
-      lhs = '<C-r>',
-      map = 'redo',
-      opts = {},
-    },
-    highlight_for_count = true,
   },
-  timer = (vim.uv or vim.loop).new_timer(),
+  timer = vim.uv.new_timer(),
   should_detach = true,
   current_hlgroup = nil,
 }
 
-local usage_namespace = api.nvim_create_namespace('highlight_undo')
+local usage_namespace = api.nvim_create_namespace('highlight_action')
 
-function M.call_original_kemap(map)
+function M.call_original_keymap(map)
   if type(map) == 'string' then
     vim.cmd(map)
   elseif type(map) == 'function' then
@@ -54,22 +66,6 @@ function M.on_bytes(
   if M.should_detach then
     return true
   end
-  -- dump(
-  --   {
-  --     ignored = ignored,
-  --     bufnr = bufnr,
-  --     changedtick = changedtick,
-  --     start_row = start_row,
-  --     start_column = start_column,
-  --     byte_off = byte_offset,
-  --     old_end_row = old_end_row,
-  --     old_end_col = old_end_col,
-  --     old_end_byte = old_end_byte,
-  --     new_end_row = new_end_row,
-  --     new_end_col = new_end_col,
-  --     new_end_byte = new_end_byte,
-  --   }
-  -- )
   -- defer highligh till after changes take place..
   local num_lines = api.nvim_buf_line_count(0)
   local end_row = start_row + new_end_row
@@ -79,20 +75,14 @@ function M.on_bytes(
     end_col = #api.nvim_buf_get_lines(0, -2, -1, false)[1]
   end
   vim.schedule(function()
-    vim.highlight.range(
-      bufnr,
-      usage_namespace,
-      M.current_hlgroup,
-      { start_row, start_column },
-      { end_row, end_col}
-    )
+    vim.highlight.range(bufnr, usage_namespace, M.current_hlgroup, { start_row, start_column }, { end_row, end_col })
     M.clear_highlights(bufnr)
   end)
   --detach
   -- return true
 end
 
-function M.highlight_undo(bufnr, hlgroup, command)
+function M.highlight_action(bufnr, hlgroup, command)
   M.current_hlgroup = hlgroup
   api.nvim_buf_attach(bufnr, false, {
     on_bytes = M.on_bytes,
@@ -121,50 +111,55 @@ end
 
 ---makes highlight-undo respect `foldopen=undo` (#18)
 local function openFoldsOnUndo()
-  if vim.tbl_contains(vim.opt.foldopen:get(), "undo") then
-    vim.cmd.normal({"zv",bang = true})
+  if vim.tbl_contains(vim.opt.foldopen:get(), 'undo') then
+    vim.cmd.normal({ 'zv', bang = true })
   end
 end
 
 function M.setup(config)
-  api.nvim_set_hl(0, 'HighlightUndo', {
-    fg = '#dcd7ba',
-    bg = '#2d4f67',
-    default = true,
-  })
-  api.nvim_set_hl(0, 'HighlightRedo', {
-    fg = '#dcd7ba',
-    bg = '#2d4f67',
-    default = true,
-  })
-
   M.config = vim.tbl_deep_extend('keep', config or {}, M.config)
 
-  local undo = M.config.undo
-  vim.keymap.set(undo.mode, undo.lhs, function()
-    if M.config.highlight_for_count or vim.v.count == 0 then
-      M.highlight_undo(0, undo.hlgroup, function()
-        M.call_original_kemap(undo.map)
-      end)
-    else
-      local keys = vim.api.nvim_replace_termcodes(vim.v.count .. 'u', true, false, true)
-      vim.api.nvim_feedkeys(keys, 'n', false)
-    end
-    openFoldsOnUndo()
-  end, undo.opts)
+  local function KeymapHighlights(action)
+    local type = M.config.actions[action]
 
-  local redo = M.config.redo
-  vim.keymap.set(redo.mode, redo.lhs, function()
-    if M.config.highlight_for_count or vim.v.count == 0 then
-      M.highlight_undo(0, redo.hlgroup, function()
-        M.call_original_kemap(redo.map)
-      end)
-    else
-      local keys = vim.api.nvim_replace_termcodes(vim.v.count .. '<c-r>', true, false, true)
-      vim.api.nvim_feedkeys(keys, 'n', false)
+    if type.fg == nil then
+      type.fg = '#dcd7ba'
     end
-    openFoldsOnUndo()
-  end, redo.opts)
+
+    if type.bg == nil then
+      type.bg = '#2d4f67'
+    end
+
+    if type.mode == nil then
+      type.mode = 'n'
+    end
+
+    if type.opts == nil then
+      type.opts = {}
+    end
+
+    if type.disabled then
+      return
+    end
+
+    api.nvim_set_hl(0, 'Highlight' .. action, { fg = type.fg, bg = type.bg })
+    vim.keymap.set(type.mode, type.keymap, function()
+      if M.config.highlight_for_count or vim.v.count == 0 then
+        M.highlight_action(0, 'Highlight' .. action, function()
+          M.call_original_keymap(type.cmd)
+        end)
+      else
+        local keys = vim.api.nvim_replace_termcodes(vim.v.count .. type.keymap, true, false, true)
+        vim.api.nvim_feedkeys(keys, 'n', false)
+      end
+      if action == 'Undo' or action == 'Redo' then
+        openFoldsOnUndo()
+      end
+    end, type.opts)
+  end
+
+  for key in pairs(M.config.actions) do
+    KeymapHighlights(key)
+  end
 end
-
 return M
