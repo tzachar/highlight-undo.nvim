@@ -1,6 +1,6 @@
 # highlight-undo.nvim
 
-Highlight changed text after Undo / Redo operations. Purely lua / nvim api implementation,
+Highlight changed text after an action. Purely lua / nvim api implementation,
 no external dependencies needed.
 
 ## In Action
@@ -26,22 +26,38 @@ You can manually setup `highlight-undo` as follows:
 
 ```lua
 require('highlight-undo').setup({
-  duration = 300,
-  undo = {
-    hlgroup = 'HighlightUndo',
-    mode = 'n',
-    lhs = 'u',
-    map = 'undo',
-    opts = {}
-  },
-  redo = {
-    hlgroup = 'HighlightRedo',
-    mode = 'n',
-    lhs = '<C-r>',
-    map = 'redo',
-    opts = {}
-  },
-  highlight_for_count = true,
+  highlight_for_count = true, -- Should '3p' or '5u' be highlighted
+  duration = 300, -- Time in ms for the highlight
+    actions = {
+      Undo = {
+        disabled = false,
+        fg = '#dcd7ba',
+        bg = '#2d4f67',
+        mode = 'n',
+        keymap = 'u', -- mapping
+        cmd = 'undo', -- Vim command
+        opts = {}, -- silent = true, desc = "", ...
+      },
+      Redo = {
+        disabled = false,
+        fg = '#dcd7ba',
+        bg = '#2d4f67',
+        mode = 'n',
+        keymap = '<C-r>',
+        cmd = 'redo',
+        opts = {},
+      },
+      Pasted = {
+        disabled = false,
+        fg = '#dcd7ba',
+        bg = '#2d4f67',
+        mode = 'n',
+        keymap = 'p',
+        cmd = 'put',
+        opts = {},
+      },
+     -- Add any action you want
+    },
 })
 ```
 
@@ -49,19 +65,14 @@ require('highlight-undo').setup({
 
 Specify which keymaps should trigger the beginning and end of tracking changes
 ([see here](#how-the-plugin-works)). By default, the plugin starts tracking
-changes before an `undo` or a `redo`.
+changes before an `undo` or a `redo` or anything you want.
 
-Keymaps are specified in the same format as `vim.keymap.set` accepts: mode, lhs,
-rhs, opts. Maps are passed verbatim to `vim.keymap.set`.
+Keymaps are specified in the same format as `vim.keymap.set` accepts: mode, keympa, cmd, opts. Maps are passed verbatim to `vim.keymap.set`.
 
-## `hlgroup`
+## Highlighting
 
-Specify the highlighting group to use.
-
-By default, `highlight-undo` will use `HighlightUndo` for the undo action and
-`HighlightRedo` for the redo action. Both of these groups, are defined when the
-plugin is loaded. If the groups are already defined elsewhere in your config
-then they will not be overwritten. You can also use others groups, if desired.
+The hlgroup is created like this: "Highlight|action|" 
+For example with the Pasted action: "HighlightPasted"
 
 ## `duration`
 
