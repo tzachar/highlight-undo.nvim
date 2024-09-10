@@ -28,36 +28,27 @@ You can manually setup `highlight-undo` as follows:
 require('highlight-undo').setup({
   highlight_for_count = true, -- Should '3p' or '5u' be highlighted
   duration = 300, -- Time in ms for the highlight
-    actions = {
-      Undo = {
-        disabled = false,
-        fg = '#dcd7ba',
-        bg = '#2d4f67',
-        mode = 'n',
-        keymap = 'u', -- mapping
-        cmd = 'undo', -- Vim command
-        opts = {}, -- silent = true, desc = "", ...
-      },
-      Redo = {
-        disabled = false,
-        fg = '#dcd7ba',
-        bg = '#2d4f67',
-        mode = 'n',
-        keymap = '<C-r>',
-        cmd = 'redo',
-        opts = {},
-      },
-      Pasted = {
-        disabled = false,
-        fg = '#dcd7ba',
-        bg = '#2d4f67',
-        mode = 'n',
-        keymap = 'p',
-        cmd = 'put',
-        opts = {},
-      },
-     -- Add any action you want
+  after_keymaps = function() end, -- Any keymaps you might wanna add after the keymaps set by this plugin
+  actions = {
+    Undo = {
+      disabled = false, -- Useful when debugging
+        fg = "#dcd7ba", -- colors
+        bg = "#2d4f67",
+        mode = "n", -- The mode(s)
+				keymap = "u", -- mapping
+				cmd = "undo", -- Vim command
+				opts = {}, -- silent = true, desc = "", ...
+			},
+    Redo = { keymap = "<C-r>", cmd = "redo" }, -- Actions can be made as easely as this
+    Pasted = {
+      keymap = "p",
+      cmd = "put",
+      cmd_args = function() -- This function needs to return a string as a parameter to cmd (or it can do stuff just after the command)
+        return vim.v.register -- Return the register
+      end,
     },
+     -- Add any action you want
+  },
 })
 ```
 
