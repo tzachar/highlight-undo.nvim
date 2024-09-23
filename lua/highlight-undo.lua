@@ -3,24 +3,60 @@
 
 local api = vim.api
 
+---makes highlight-undo respect `foldopen=undo` (#18)
+local function openFoldsOnUndo()
+  if vim.tbl_contains(vim.opt.foldopen:get(), "undo") then
+    vim.cmd.normal({"zv",bang = true})
+  end
+end
+
 local M = {
   config = {
     duration = 300,
-    undo = {
-      hlgroup = 'HighlightUndo',
-      mode = 'n',
-      lhs = 'u',
-      map = 'undo',
-      opts = {},
+    keymaps = {
+      {
+        desc = "undo",
+        hlgroup = 'HighlightUndo',
+        mode = 'n',
+        lhs = 'u',
+        rhs = nil,
+        opts = {
+          callback = function ()
+            vim.cmd('undo')
+            openFoldsOnUndo()
+          end,
+        },
+      },
+      {
+        desc = "redo",
+        hlgroup = 'HighlightRedo',
+        mode = 'n',
+        lhs = '<C-r>',
+        rhs = nil,
+        opts = {
+          callback = function ()
+            vim.cmd('redo')
+            openFoldsOnUndo()
+          end,
+        },
+      },
+      {
+        desc = "paste",
+        hlgroup = 'HighlightUndo',
+        mode = 'n',
+        lhs = 'p',
+        rhs = 'p',
+        opts = {},
+      },
+      {
+        desc = "Paste",
+        hlgroup = 'HighlightUndo',
+        mode = 'n',
+        lhs = 'P',
+        rhs = 'P',
+        opts = {},
+      },
     },
-    redo = {
-      hlgroup = 'HighlightRedo',
-      mode = 'n',
-      lhs = '<C-r>',
-      map = 'redo',
-      opts = {},
-    },
-    highlight_for_count = true,
   },
   timer = (vim.uv or vim.loop).new_timer(),
   should_detach = true,
@@ -28,14 +64,6 @@ local M = {
 }
 
 local usage_namespace = api.nvim_create_namespace('highlight_undo')
-
-function M.call_original_kemap(map)
-  if type(map) == 'string' then
-    vim.cmd(map)
-  elseif type(map) == 'function' then
-    map()
-  end
-end
 
 function M.on_bytes(
   ignored, ---@diagnostic disable-line
@@ -51,9 +79,12 @@ function M.on_bytes(
   new_end_col, ---@diagnostic disable-line
   new_end_byte ---@diagnostic disable-line
 )
+  dump("on_bytes called")
   if M.should_detach then
+    dump("detaching")
     return true
   end
+  dump("detectong changes")
   -- dump(
   --   {
   --     ignored = ignored,
@@ -98,14 +129,9 @@ function M.highlight_undo(bufnr, hlgroup, command)
     on_bytes = M.on_bytes,
   })
   M.should_detach = false
-  if M.config.highlight_for_count then
-    for _ = 1, vim.v.count1 do
-      command()
-    end
-  else
+  for _ = 1, vim.v.count1 do
     command()
   end
-  M.should_detach = true
 end
 
 function M.clear_highlights(bufnr)
@@ -115,15 +141,9 @@ function M.clear_highlights(bufnr)
     0,
     vim.schedule_wrap(function()
       api.nvim_buf_clear_namespace(bufnr, usage_namespace, 0, -1)
+      M.should_detach = true
     end)
   )
-end
-
----makes highlight-undo respect `foldopen=undo` (#18)
-local function openFoldsOnUndo()
-  if vim.tbl_contains(vim.opt.foldopen:get(), "undo") then
-    vim.cmd.normal({"zv",bang = true})
-  end
 end
 
 function M.setup(config)
@@ -140,31 +160,19 @@ function M.setup(config)
 
   M.config = vim.tbl_deep_extend('keep', config or {}, M.config)
 
-  local undo = M.config.undo
-  vim.keymap.set(undo.mode, undo.lhs, function()
-    if M.config.highlight_for_count or vim.v.count == 0 then
-      M.highlight_undo(0, undo.hlgroup, function()
-        M.call_original_kemap(undo.map)
-      end)
-    else
-      local keys = vim.api.nvim_replace_termcodes(vim.v.count .. 'u', true, false, true)
-      vim.api.nvim_feedkeys(keys, 'n', false)
-    end
-    openFoldsOnUndo()
-  end, undo.opts)
-
-  local redo = M.config.redo
-  vim.keymap.set(redo.mode, redo.lhs, function()
-    if M.config.highlight_for_count or vim.v.count == 0 then
-      M.highlight_undo(0, redo.hlgroup, function()
-        M.call_original_kemap(redo.map)
-      end)
-    else
-      local keys = vim.api.nvim_replace_termcodes(vim.v.count .. '<c-r>', true, false, true)
-      vim.api.nvim_feedkeys(keys, 'n', false)
-    end
-    openFoldsOnUndo()
-  end, redo.opts)
+  for _, opts in ipairs(M.config.keymaps) do
+    vim.keymap.set(opts.mode, opts.lhs, function()
+        M.highlight_undo(0, opts.hlgroup, function()
+          if opts.rhs and type(opts.rhs) == "string" then
+            vim.api.nvim_feedkeys(opts.rhs, opts.mode, false)
+          elseif opts.command and type(opts.command) == "string" then
+            vim.cmd(opts.command)
+          elseif opts.opts.callback then
+            opts.opts.callback()
+          end
+        end)
+    end, opts.opts)
+  end
 end
 
 return M
