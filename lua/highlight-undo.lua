@@ -6,7 +6,7 @@ local api = vim.api
 ---makes highlight-undo respect `foldopen=undo` (#18)
 local function openFoldsOnUndo()
   if vim.tbl_contains(vim.opt.foldopen:get(), "undo") then
-    vim.cmd.normal({"zv",bang = true})
+    vim.cmd.normal({"zv", bang = true})
   end
 end
 
@@ -14,7 +14,7 @@ local M = {
   config = {
     duration = 300,
     keymaps = {
-      {
+      undo = {
         desc = "undo",
         hlgroup = 'HighlightUndo',
         mode = 'n',
@@ -27,7 +27,7 @@ local M = {
           end,
         },
       },
-      {
+      redo = {
         desc = "redo",
         hlgroup = 'HighlightRedo',
         mode = 'n',
@@ -40,7 +40,7 @@ local M = {
           end,
         },
       },
-      {
+      paste = {
         desc = "paste",
         hlgroup = 'HighlightUndo',
         mode = 'n',
@@ -48,7 +48,7 @@ local M = {
         rhs = 'p',
         opts = {},
       },
-      {
+      Paste = {
         desc = "Paste",
         hlgroup = 'HighlightUndo',
         mode = 'n',
@@ -79,28 +79,9 @@ function M.on_bytes(
   new_end_col, ---@diagnostic disable-line
   new_end_byte ---@diagnostic disable-line
 )
-  dump("on_bytes called")
   if M.should_detach then
-    dump("detaching")
     return true
   end
-  dump("detectong changes")
-  -- dump(
-  --   {
-  --     ignored = ignored,
-  --     bufnr = bufnr,
-  --     changedtick = changedtick,
-  --     start_row = start_row,
-  --     start_column = start_column,
-  --     byte_off = byte_offset,
-  --     old_end_row = old_end_row,
-  --     old_end_col = old_end_col,
-  --     old_end_byte = old_end_byte,
-  --     new_end_row = new_end_row,
-  --     new_end_col = new_end_col,
-  --     new_end_byte = new_end_byte,
-  --   }
-  -- )
   -- defer highligh till after changes take place..
   local num_lines = api.nvim_buf_line_count(0)
   local end_row = start_row + new_end_row
@@ -117,21 +98,20 @@ function M.on_bytes(
       { start_row, start_column },
       { end_row, end_col}
     )
-    M.clear_highlights(bufnr)
   end)
-  --detach
-  -- return true
 end
 
 function M.highlight_undo(bufnr, hlgroup, command)
+  M.timer:stop()
   M.current_hlgroup = hlgroup
+  M.should_detach = false
   api.nvim_buf_attach(bufnr, false, {
     on_bytes = M.on_bytes,
   })
-  M.should_detach = false
   for _ = 1, vim.v.count1 do
     command()
   end
+  M.clear_highlights(bufnr)
 end
 
 function M.clear_highlights(bufnr)
@@ -159,19 +139,27 @@ function M.setup(config)
   })
 
   M.config = vim.tbl_deep_extend('keep', config or {}, M.config)
-
-  for _, opts in ipairs(M.config.keymaps) do
-    vim.keymap.set(opts.mode, opts.lhs, function()
+  for _, opts in pairs(M.config.keymaps) do
+    if not opts.disabled then
+      local org_mapping = vim.fn.maparg(opts.lhs, opts.mode, false, true)
+      vim.keymap.set(opts.mode, opts.lhs, function()
         M.highlight_undo(0, opts.hlgroup, function()
-          if opts.rhs and type(opts.rhs) == "string" then
-            vim.api.nvim_feedkeys(opts.rhs, opts.mode, false)
+          if org_mapping and not vim.tbl_isempty(org_mapping) then
+            if org_mapping.callback then
+              org_mapping.callback()
+            elseif org_mapping.rhs then
+              vim.api.nvim_feedkeys(org_mapping.rhs, org_mapping.mode, true)
+            end
+          elseif opts.rhs and type(opts.rhs) == "string" then
+            vim.api.nvim_feedkeys(opts.rhs, opts.mode, true)
           elseif opts.command and type(opts.command) == "string" then
             vim.cmd(opts.command)
           elseif opts.opts.callback then
             opts.opts.callback()
           end
         end)
-    end, opts.opts)
+      end, opts.opts)
+    end
   end
 end
 
