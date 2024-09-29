@@ -126,6 +126,36 @@ function M.clear_highlights(bufnr)
   )
 end
 
+local function hijack(opts, org_mapping)
+  vim.keymap.set(opts.mode, opts.lhs, function()
+    M.highlight_undo(0, opts.hlgroup, function()
+      if org_mapping and not vim.tbl_isempty(org_mapping) then
+        if org_mapping.callback then
+          org_mapping.callback()
+          -- if the original mapping was also hijcking calls (for example,
+          -- which-key.nvim) make sure to recapture the mapping
+          -- we assume that the actual mapping will be present after the
+          -- first invcation
+          local new_mapping = vim.fn.maparg(opts.lhs, opts.mode, false, true)
+          if new_mapping ~= org_mapping then
+            hijack(opts, new_mapping)
+          end
+        elseif org_mapping.rhs then
+          local keys = vim.api.nvim_replace_termcodes(org_mapping.rhs, true, false, true)
+          vim.api.nvim_feedkeys(keys, org_mapping.mode, false)
+        end
+      elseif opts.rhs and type(opts.rhs) == "string" then
+        local keys = vim.api.nvim_replace_termcodes(org_mapping.rhs, true, false, true)
+        vim.api.nvim_feedkeys(opts.rhs, opts.mode, false)
+      elseif opts.command and type(opts.command) == "string" then
+        vim.cmd(opts.command)
+      elseif opts.opts.callback then
+        opts.opts.callback()
+      end
+    end)
+  end, opts.opts)
+end
+
 function M.setup(config)
   api.nvim_set_hl(0, 'HighlightUndo', {
     fg = '#dcd7ba',
@@ -142,23 +172,7 @@ function M.setup(config)
   for _, opts in pairs(M.config.keymaps) do
     if not opts.disabled then
       local org_mapping = vim.fn.maparg(opts.lhs, opts.mode, false, true)
-      vim.keymap.set(opts.mode, opts.lhs, function()
-        M.highlight_undo(0, opts.hlgroup, function()
-          if org_mapping and not vim.tbl_isempty(org_mapping) then
-            if org_mapping.callback then
-              org_mapping.callback()
-            elseif org_mapping.rhs then
-              vim.api.nvim_feedkeys(org_mapping.rhs, org_mapping.mode, true)
-            end
-          elseif opts.rhs and type(opts.rhs) == "string" then
-            vim.api.nvim_feedkeys(opts.rhs, opts.mode, true)
-          elseif opts.command and type(opts.command) == "string" then
-            vim.cmd(opts.command)
-          elseif opts.opts.callback then
-            opts.opts.callback()
-          end
-        end)
-      end, opts.opts)
+      hijack(opts, org_mapping)
     end
   end
 end
