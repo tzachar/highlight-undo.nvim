@@ -1,7 +1,10 @@
 # highlight-undo.nvim
 
-Highlight changed text after Undo / Redo operations. Purely lua / nvim api implementation,
-no external dependencies needed.
+Highlight changed text after any action which modifies the current buffer. This
+plugin was originaly written to support Undo / Redo highlighting, but is now
+expanded to support any other action.
+
+Purely lua / nvim api implementation, no external dependencies needed.
 
 ## In Action
 
@@ -27,21 +30,20 @@ You can manually setup `highlight-undo` as follows:
 ```lua
 require('highlight-undo').setup({
   duration = 300,
-  undo = {
-    hlgroup = 'HighlightUndo',
-    mode = 'n',
-    lhs = 'u',
-    map = 'undo',
-    opts = {}
+  keymaps = {
+    Keymap_name = {
+      -- most fields here are the same as in vim.keymap.set
+      desc = "a description",
+      hlgroup = 'HighlightUndo',
+      mode = 'n',
+      lhs = 'lhs',
+      rhs = 'optional, can be nil',
+      opts = {
+        -- same as opts to vim.keymap.set. if rhs is nil, there should be a
+        -- callback key which points to a function
+      },
+    },
   },
-  redo = {
-    hlgroup = 'HighlightRedo',
-    mode = 'n',
-    lhs = '<C-r>',
-    map = 'redo',
-    opts = {}
-  },
-  highlight_for_count = true,
 })
 ```
 
@@ -49,10 +51,47 @@ require('highlight-undo').setup({
 
 Specify which keymaps should trigger the beginning and end of tracking changes
 ([see here](#how-the-plugin-works)). By default, the plugin starts tracking
-changes before an `undo` or a `redo`.
+changes before and after the following keymaps:
+* `u` -- for Undo
+* `<C-r>` -- for Redo
+* `p` -- for paste
+* `P` -- for Paste
+
+To disable any of the defaults, add a `disabled = true` entry to the appropirate
+keymap. For example, to disable the default highlight for Paste:
+
+```lua
+require('highlight-undo').setup({
+  keymaps = {
+    Paste = {
+        disabled = true,
+    },
+  },
+})
+```
 
 Keymaps are specified in the same format as `vim.keymap.set` accepts: mode, lhs,
-rhs, opts. Maps are passed verbatim to `vim.keymap.set`.
+rhs, opts. Maps are passed verbatim to `vim.keymap.set`. A different possibility
+is when you just want to hijack an existing keymap, you can then just specify
+the `lhs` and `highligh-undo` will remap `lhs` and trigger the original action
+afterwards.
+
+For example, adding `p` (which exists by default), is as easy as:
+```lua
+require('highlight-undo').setup({
+  keymaps = {
+    paste = {
+      desc = "paste",
+      hlgroup = 'HighlightUndo',
+      mode = 'n',
+      lhs = 'p',
+      rhs = 'p',
+      opts = {},
+    },
+  },
+})
+```
+Note that `lhs` and `rhs` are identical.
 
 ## `hlgroup`
 
@@ -66,14 +105,6 @@ then they will not be overwritten. You can also use others groups, if desired.
 ## `duration`
 
 The duration (in milliseconds) to highlight changes. Default is 300.
-
-## highlight_for_count
-
-Enable support for highlighting when a `<count>` is provided before the key.
-If set to `false` it will only highlight when the mapping is not prefixed with a
-`<count>`.
-
-Default: `true`
 
 ## How the Plugin Works
 
