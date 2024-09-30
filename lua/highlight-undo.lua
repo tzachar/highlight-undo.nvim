@@ -145,8 +145,8 @@ local function hijack(opts, org_mapping)
           vim.api.nvim_feedkeys(keys, org_mapping.mode, false)
         end
       elseif opts.rhs and type(opts.rhs) == "string" then
-        local keys = vim.api.nvim_replace_termcodes(org_mapping.rhs, true, false, true)
-        vim.api.nvim_feedkeys(opts.rhs, opts.mode, false)
+        local keys = vim.api.nvim_replace_termcodes(opts.rhs, true, false, true)
+        vim.api.nvim_feedkeys(keys, opts.mode, false)
       elseif opts.command and type(opts.command) == "string" then
         vim.cmd(opts.command)
       elseif opts.opts.callback then
