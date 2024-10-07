@@ -111,7 +111,9 @@ function M.highlight_undo(bufnr, hlgroup, command)
   for _ = 1, vim.v.count1 do
     command()
   end
-  M.clear_highlights(bufnr)
+  vim.schedule(function()
+    M.clear_highlights(bufnr)
+  end)
 end
 
 function M.clear_highlights(bufnr)
@@ -127,17 +129,18 @@ function M.clear_highlights(bufnr)
 end
 
 local function hijack(opts, org_mapping)
-  vim.keymap.set(opts.mode, opts.lhs, function()
+  opts.opts["noremap"] = true
+  local callback = function()
     M.highlight_undo(0, opts.hlgroup, function()
       if org_mapping and not vim.tbl_isempty(org_mapping) then
         if org_mapping.callback then
           org_mapping.callback()
-          -- if the original mapping was also hijcking calls (for example,
+          -- if the original mapping was also hijacking calls (for example,
           -- which-key.nvim) make sure to recapture the mapping
           -- we assume that the actual mapping will be present after the
           -- first invcation
           local new_mapping = vim.fn.maparg(opts.lhs, opts.mode, false, true)
-          if new_mapping ~= org_mapping then
+          if not vim.deep_equal(new_mapping, org_mapping.callback) then
             hijack(opts, new_mapping)
           end
         elseif org_mapping.rhs then
@@ -153,7 +156,8 @@ local function hijack(opts, org_mapping)
         opts.opts.callback()
       end
     end)
-  end, opts.opts)
+  end
+  vim.keymap.set(opts.mode, opts.lhs, callback, opts.opts)
 end
 
 function M.setup(config)
