@@ -108,9 +108,7 @@ function M.highlight_undo(bufnr, hlgroup, command)
   api.nvim_buf_attach(bufnr, false, {
     on_bytes = M.on_bytes,
   })
-  for _ = 1, vim.v.count1 do
-    command()
-  end
+  command()
   vim.schedule(function()
     M.clear_highlights(bufnr)
   end)
@@ -128,13 +126,28 @@ function M.clear_highlights(bufnr)
   )
 end
 
+local function add_count_and_registers(rhs)
+  local keys = vim.api.nvim_replace_termcodes(rhs, true, false, true)
+  -- add count and registers
+  if vim.v.register ~= nil then
+    keys = '"' .. vim.v.register .. keys
+  end
+  if vim.v.count > 1 then
+    keys = vim.v.count .. keys
+  end
+  dump(keys)
+  return keys
+end
+
 local function hijack(opts, org_mapping)
   opts.opts["noremap"] = true
   local callback = function()
     M.highlight_undo(0, opts.hlgroup, function()
       if org_mapping and not vim.tbl_isempty(org_mapping) then
         if org_mapping.callback then
-          org_mapping.callback()
+          for _ = 1, vim.v.count1 do
+            org_mapping.callback()
+          end
           -- if the original mapping was also hijacking calls (for example,
           -- which-key.nvim) make sure to recapture the mapping
           -- we assume that the actual mapping will be present after the
@@ -144,16 +157,18 @@ local function hijack(opts, org_mapping)
             hijack(opts, new_mapping)
           end
         elseif org_mapping.rhs then
-          local keys = vim.api.nvim_replace_termcodes(org_mapping.rhs, true, false, true)
-          vim.api.nvim_feedkeys(keys, org_mapping.mode, false)
+          vim.api.nvim_feedkeys(add_count_and_registers(org_mapping.rhs), org_mapping.mode, false)
         end
       elseif opts.rhs and type(opts.rhs) == "string" then
-        local keys = vim.api.nvim_replace_termcodes(opts.rhs, true, false, true)
-        vim.api.nvim_feedkeys(keys, opts.mode, false)
+        vim.api.nvim_feedkeys(add_count_and_registers(opts.rhs), opts.mode, false)
       elseif opts.command and type(opts.command) == "string" then
-        vim.cmd(opts.command)
+        for _ = 1, vim.v.count1 do
+          vim.cmd(opts.command)
+        end
       elseif opts.opts.callback then
-        opts.opts.callback()
+        for _ = 1, vim.v.count1 do
+          opts.opts.callback()
+        end
       end
     end)
   end
