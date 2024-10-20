@@ -135,7 +135,6 @@ local function add_count_and_registers(rhs)
   if vim.v.count > 1 then
     keys = vim.v.count .. keys
   end
-  dump(keys)
   return keys
 end
 
