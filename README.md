@@ -47,6 +47,20 @@ require('highlight-undo').setup({
 })
 ```
 
+### Plugin Load Order
+
+As this plugin hijacks kemaps, there might be issues with other plugin with
+similar behavior. Make sure this plugin is loaded last. For example, using
+`lazy.nvim`, you can just specify the following:
+
+
+```lua
+  {
+    'tzachar/highlight-undo.nvim',
+    keys = { { "u" }, { "<C-r>" } },
+  }
+```
+
 ## Keymaps
 
 Specify which keymaps should trigger the beginning and end of tracking changes
