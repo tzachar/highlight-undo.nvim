@@ -91,7 +91,7 @@ function M.on_bytes(
     end_col = #api.nvim_buf_get_lines(0, -2, -1, false)[1]
   end
   vim.schedule(function()
-    vim.highlight.range(
+    vim.hl.range(
       bufnr,
       usage_namespace,
       M.current_hlgroup,
