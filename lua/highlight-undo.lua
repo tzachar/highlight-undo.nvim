@@ -91,7 +91,9 @@ function M.on_bytes(
     end_col = #api.nvim_buf_get_lines(0, -2, -1, false)[1]
   end
   vim.schedule(function()
-    vim.hl.range(
+    local hl
+    if vim.fn.has("nvim-0.11") == 1 then hl = vim.hl else hl = vim.highlight end
+    hl.range(
       bufnr,
       usage_namespace,
       M.current_hlgroup,
