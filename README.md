@@ -25,7 +25,13 @@ Using Lazy:
 
 ## Setup
 
-You can manually setup `highlight-undo` as follows:
+The easiest way to set up `highlight-undo` as follows:
+```lua
+require('highlight-undo').setup({})
+```
+The code above will set up `highlight-undo` to hijack `u`, `<C-r>`, `p` and `P`. To disable any of the defaults see [here](#keymaps)
+
+You can also manually setup `highlight-undo` with specific / additional keymaps as follows:
 
 ```lua
 require('highlight-undo').setup({
