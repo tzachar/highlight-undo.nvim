@@ -77,7 +77,7 @@ changes before and after the following keymaps:
 * `p` -- for paste
 * `P` -- for Paste
 
-To disable any of the defaults, add a `disabled = true` entry to the appropirate
+To disable any of the defaults, add a `disabled = true` entry to the appropriate
 keymap. For example, to disable the default highlight for Paste:
 
 ```lua
