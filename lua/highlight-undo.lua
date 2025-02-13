@@ -1,71 +1,34 @@
--- This module highlights reference usages and the corresponding
--- definition on cursor hold.
-
 local api = vim.api
+Object =  require("classic")
 
----makes highlight-undo respect `foldopen=undo` (#18)
-local function openFoldsOnUndo()
-  if vim.tbl_contains(vim.opt.foldopen:get(), "undo") then
-    vim.cmd.normal({"zv", bang = true})
-  end
+Tracker = Object:extend()
+
+function Tracker:new(config, buf)
+    self.timer = (vim.uv or vim.loop).new_timer()
+    self.should_detach = true
+    self.buf = buf
+    self.config = config
 end
 
-local M = {
-  config = {
-    duration = 300,
-    keymaps = {
-      undo = {
-        desc = "undo",
-        hlgroup = 'HighlightUndo',
-        mode = 'n',
-        lhs = 'u',
-        rhs = nil,
-        opts = {
-          callback = function ()
-            vim.cmd('undo')
-            openFoldsOnUndo()
-          end,
-        },
-      },
-      redo = {
-        desc = "redo",
-        hlgroup = 'HighlightRedo',
-        mode = 'n',
-        lhs = '<C-r>',
-        rhs = nil,
-        opts = {
-          callback = function ()
-            vim.cmd('redo')
-            openFoldsOnUndo()
-          end,
-        },
-      },
-      paste = {
-        desc = "paste",
-        hlgroup = 'HighlightUndo',
-        mode = 'n',
-        lhs = 'p',
-        rhs = 'p',
-        opts = {},
-      },
-      Paste = {
-        desc = "Paste",
-        hlgroup = 'HighlightUndo',
-        mode = 'n',
-        lhs = 'P',
-        rhs = 'P',
-        opts = {},
-      },
-    },
-  },
-  timer = (vim.uv or vim.loop).new_timer(),
-  should_detach = true,
-  current_hlgroup = nil,
+local config = {
+  duration = 300,
+  hlgroup = "HighlightUndo",
 }
+
+local buffers = {}
+
+local function attach(buf)
+  local cache = buffers[buf]
+  if cache ~= nil then
+    return cache
+  end
+  buffers[buf] = Tracker(config, buf)
+  return buffers[buf]
+end
 
 local usage_namespace = api.nvim_create_namespace('highlight_undo')
 
-function M.on_bytes(
+function Tracker:on_bytes(
   ignored, ---@diagnostic disable-line
   bufnr, ---@diagnostic disable-line
   changedtick, ---@diagnostic disable-line
@@ -79,7 +42,7 @@ function M.on_bytes(
   new_end_col, ---@diagnostic disable-line
   new_end_byte ---@diagnostic disable-line
 )
-  if M.should_detach then
+  if self.should_detach then
     return true
   end
   -- defer highligh till after changes take place..
@@ -94,105 +57,61 @@ function M.on_bytes(
     (vim.hl or vim.highlight).range(
       bufnr,
       usage_namespace,
-      M.current_hlgroup,
+      self.config.hlgroup,
       { start_row, start_column },
       { end_row, end_col}
     )
+    self:clear_highlights()
   end)
 end
 
-function M.highlight_undo(bufnr, hlgroup, command)
-  M.timer:stop()
-  M.current_hlgroup = hlgroup
-  M.should_detach = false
-  api.nvim_buf_attach(bufnr, false, {
-    on_bytes = M.on_bytes,
+function Tracker:highlight_undo()
+  self.timer:stop()
+  self.should_detach = false
+  api.nvim_buf_attach(self.buf, false, {
+    on_bytes = function (...) self:on_bytes(...) end,
   })
-  command()
   vim.schedule(function()
-    M.clear_highlights(bufnr)
+    self:clear_highlights()
   end)
 end
 
-function M.clear_highlights(bufnr)
-  M.timer:stop()
-  M.timer:start(
-    M.config.duration,
+function Tracker:clear_highlights()
+  self.timer:stop()
+  self.timer:start(
+    self.config.duration,
     0,
     vim.schedule_wrap(function()
-      api.nvim_buf_clear_namespace(bufnr, usage_namespace, 0, -1)
-      M.should_detach = true
+      api.nvim_buf_clear_namespace(self.buf, usage_namespace, 0, -1)
     end)
   )
 end
 
-local function add_count_and_registers(rhs)
-  local keys = vim.api.nvim_replace_termcodes(rhs, true, false, true)
-  -- add count and registers
-  if vim.v.register ~= nil then
-    keys = '"' .. vim.v.register .. keys
-  end
-  if vim.v.count > 1 then
-    keys = vim.v.count .. keys
-  end
-  return keys
-end
-
-local function hijack(opts, org_mapping)
-  opts.opts["noremap"] = true
-  local callback = function()
-    M.highlight_undo(0, opts.hlgroup, function()
-      if org_mapping and not vim.tbl_isempty(org_mapping) then
-        if org_mapping.callback then
-          for _ = 1, vim.v.count1 do
-            org_mapping.callback()
-          end
-          -- if the original mapping was also hijacking calls (for example,
-          -- which-key.nvim) make sure to recapture the mapping
-          -- we assume that the actual mapping will be present after the
-          -- first invcation
-          local new_mapping = vim.fn.maparg(opts.lhs, opts.mode, false, true)
-          if not vim.deep_equal(new_mapping, org_mapping.callback) then
-            hijack(opts, new_mapping)
-          end
-        elseif org_mapping.rhs then
-          vim.api.nvim_feedkeys(add_count_and_registers(org_mapping.rhs), org_mapping.mode, false)
-        end
-      elseif opts.rhs and type(opts.rhs) == "string" then
-        vim.api.nvim_feedkeys(add_count_and_registers(opts.rhs), opts.mode, false)
-      elseif opts.command and type(opts.command) == "string" then
-        for _ = 1, vim.v.count1 do
-          vim.cmd(opts.command)
-        end
-      elseif opts.opts.callback then
-        for _ = 1, vim.v.count1 do
-          opts.opts.callback()
-        end
-      end
-    end)
-  end
-  vim.keymap.set(opts.mode, opts.lhs, callback, opts.opts)
-end
-
-function M.setup(config)
+local M = {}
+function M.setup(cfg)
   api.nvim_set_hl(0, 'HighlightUndo', {
     fg = '#dcd7ba',
     bg = '#2d4f67',
     default = true,
   })
-  api.nvim_set_hl(0, 'HighlightRedo', {
-    fg = '#dcd7ba',
-    bg = '#2d4f67',
-    default = true,
-  })
 
-  M.config = vim.tbl_deep_extend('keep', config or {}, M.config)
-  for _, opts in pairs(M.config.keymaps) do
-    if not opts.disabled then
-      local org_mapping = vim.fn.maparg(opts.lhs, opts.mode, false, true)
-      hijack(opts, org_mapping)
+  config = vim.tbl_deep_extend('keep', cfg or {}, config)
+  vim.api.nvim_create_autocmd({"InsertLeave", "BufEnter"}, {
+    pattern = {"*"},
+    callback = function(ev)
+      local buf = ev.buf
+      local tracker = attach(buf)
+      tracker:highlight_undo()
     end
-  end
+  })
+  vim.api.nvim_create_autocmd({"InsertEnter", "BufLeave"}, {
+    pattern = {"*"},
+    callback = function(ev)
+      local buf = ev.buf
+      local tracker = attach(buf)
+      tracker.should_detach = true
+    end
+  })
 end
 
 return M
