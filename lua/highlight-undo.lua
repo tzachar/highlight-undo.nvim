@@ -10,12 +10,28 @@ function Tracker:new(config, buf)
   self.config = config
 end
 
+local default_ignore_cb = function(buf)
+  local bo = vim.bo[buf]
+
+  -- Check for special buffer types, e.g. lazy, telescope
+  if bo.buftype ~= "" then
+    return true
+  end
+
+  -- Check if buffer is modifiable
+  if not bo.modifiable then
+    return true
+  end
+
+  return false
+end
+
 local config = {
   duration = 300,
   hlgroup = "HighlightUndo",
   pattern = { "*" },
-  ignored_filetypes = { "neo-tree", "fugitive", " TelescopePrompt" },
-  ignore_cb = nil,
+  ignored_filetypes = { "neo-tree", "fugitive", "TelescopePrompt" },
+  ignore_cb = default_ignore_cb,
 }
 
 local buffers = {}
