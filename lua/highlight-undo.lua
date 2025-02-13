@@ -13,6 +13,8 @@ end
 local config = {
   duration = 300,
   hlgroup = "HighlightUndo",
+  pattern = { "*" },
+  ignored_filetypes = { "neo-tree", "fugitive", " TelescopePrompt" },
 }
 
 local buffers = {}
@@ -99,11 +101,11 @@ function M.setup(cfg)
 
   config = vim.tbl_deep_extend('keep', cfg or {}, config)
   vim.api.nvim_create_autocmd({ "InsertLeave", "BufEnter" }, {
-    pattern = { "*" },
+    pattern = config.pattern or { "*" },
     callback = function(ev)
       local buf = ev.buf
-      local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
-      if ft ~= "neo-tree" then
+      local ft = api.nvim_get_option_value("filetype", {buf = buf})
+      if not vim.tbl_contains(config.ignored_filetypes, ft) then
         local tracker = attach(buf)
         tracker:highlight_undo()
       end
@@ -113,8 +115,8 @@ function M.setup(cfg)
     pattern = { "*" },
     callback = function(ev)
       local buf = ev.buf
-      local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
-      if ft ~= "neo-tree" then
+      local ft = api.nvim_get_option_value("filetype", {buf = buf})
+      if not vim.tbl_contains(config.ignored_filetypes, ft) then
         local tracker = attach(buf)
         tracker.should_detach = true
       end
