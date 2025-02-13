@@ -82,7 +82,9 @@ function Tracker:clear_highlights()
     self.config.duration,
     0,
     vim.schedule_wrap(function()
-      api.nvim_buf_clear_namespace(self.buf, usage_namespace, 0, -1)
+      if vim.api.nvim_buf_is_valid(self.buf) then
+        api.nvim_buf_clear_namespace(self.buf, usage_namespace, 0, -1)
+      end
     end)
   )
 end
