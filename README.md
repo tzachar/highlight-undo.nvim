@@ -21,7 +21,7 @@ Using Lazy:
         hlgroup = "HighlightUndo",
         duration = 300,
         pattern = {"*"},
-        ignored_filetypes = { "neo-tree", "fugitive", " TelescopePrompt" },
+        ignored_filetypes = { "neo-tree", "fugitive", "TelescopePrompt", "mason", "lazy" },
         ignore_cb = nil,
     },
   },
@@ -68,7 +68,7 @@ Which file patterns to atttach to. Default is everything (`*`).
 
 ```lua
 require('highlight-undo').setup({
-        ignored_filetypes = { "neo-tree", "fugitive", " TelescopePrompt" },
+        ignored_filetypes = { "neo-tree", "fugitive", "TelescopePrompt", "mason", "lazy" },
 })
 ```
 
