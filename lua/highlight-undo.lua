@@ -15,6 +15,7 @@ local config = {
   hlgroup = "HighlightUndo",
   pattern = { "*" },
   ignored_filetypes = { "neo-tree", "fugitive", " TelescopePrompt" },
+  ignore_cb = nil,
 }
 
 local buffers = {}
@@ -105,7 +106,9 @@ function M.setup(cfg)
     callback = function(ev)
       local buf = ev.buf
       local ft = api.nvim_get_option_value("filetype", {buf = buf})
-      if not vim.tbl_contains(config.ignored_filetypes, ft) then
+      if ((not vim.tbl_contains(config.ignored_filetypes, ft))
+        and not (config.ignore_cb and config.ignore_cb(buf))
+      ) then
         local tracker = attach(buf)
         tracker:highlight_undo()
       end
@@ -116,7 +119,25 @@ function M.setup(cfg)
     callback = function(ev)
       local buf = ev.buf
       local ft = api.nvim_get_option_value("filetype", {buf = buf})
-      if not vim.tbl_contains(config.ignored_filetypes, ft) then
+      if ((not vim.tbl_contains(config.ignored_filetypes, ft))
+        and not (config.ignore_cb and config.ignore_cb(buf))
+      ) then
+        local tracker = attach(buf)
+        tracker.should_detach = true
+      end
+    end
+  })
+
+  -- see if we need to cancel after filetype has been set!
+  -- this is a race condition with the previous autocommands
+  vim.api.nvim_create_autocmd({ "FileType" }, {
+    pattern = { "*" },
+    callback = function(ev)
+      local buf = ev.buf
+      local ft = api.nvim_get_option_value("filetype", {buf = buf})
+      if vim.tbl_contains(config.ignored_filetypes, ft)
+        or (config.ignore_cb and config.ignore_cb(buf)
+      ) then
         local tracker = attach(buf)
         tracker.should_detach = true
       end

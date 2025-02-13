@@ -22,6 +22,7 @@ Using Lazy:
         duration = 300,
         pattern = {"*"},
         ignored_filetypes = { "neo-tree", "fugitive", " TelescopePrompt" },
+        ignore_cb = nil,
     },
   },
 ```
@@ -72,3 +73,15 @@ require('highlight-undo').setup({
 ```
 
 Which file types to ignore, regardless of `patter`.
+
+## `ignore_cb`
+
+```lua
+require('highlight-undo').setup({
+        ignored_cb = function(buf) return false end,
+})
+```
+
+You can also provide a callback function which is called when attaching to a new
+buffer, which should return `true` if you want to disable `highlight-undo` on
+this buffer.
