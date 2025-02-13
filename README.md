@@ -78,7 +78,7 @@ Which file types to ignore, regardless of `patter`.
 
 ```lua
 require('highlight-undo').setup({
-        ignored_cb = function(buf) return false end,
+        ignore_cb = function(buf) return false end,
 })
 ```
 
