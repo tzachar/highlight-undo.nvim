@@ -14,7 +14,7 @@ local config = {
   duration = 300,
   hlgroup = "HighlightUndo",
   pattern = { "*" },
-  ignored_filetypes = { "neo-tree", "fugitive", " TelescopePrompt" },
+  ignored_filetypes = { "neo-tree", "fugitive", "TelescopePrompt", "mason", "lazy" },
   ignore_cb = nil,
 }
 
