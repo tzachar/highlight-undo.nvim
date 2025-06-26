@@ -101,7 +101,7 @@ function Tracker:clear_highlights()
     self.config.duration,
     0,
     vim.schedule_wrap(function()
-      if vim.api.nvim_buf_is_valid(self.buf) then
+      if api.nvim_buf_is_valid(self.buf) then
         api.nvim_buf_clear_namespace(self.buf, usage_namespace, 0, -1)
       end
     end)
@@ -117,10 +117,13 @@ function M.setup(cfg)
   })
 
   config = vim.tbl_deep_extend('keep', cfg or {}, config)
-  vim.api.nvim_create_autocmd({ "InsertLeave", "BufEnter" }, {
+  api.nvim_create_autocmd({ "InsertLeave", "BufEnter" }, {
     pattern = config.pattern or { "*" },
     callback = function(ev)
       local buf = ev.buf
+      if not api.nvim_buf_is_valid(buf) then
+        return
+      end
       local ft = api.nvim_get_option_value("filetype", {buf = buf})
       if ((not vim.tbl_contains(config.ignored_filetypes, ft))
         and not (config.ignore_cb and config.ignore_cb(buf))
@@ -130,10 +133,13 @@ function M.setup(cfg)
       end
     end
   })
-  vim.api.nvim_create_autocmd({ "InsertEnter", "BufLeave" }, {
+  api.nvim_create_autocmd({ "InsertEnter", "BufLeave" }, {
     pattern = { "*" },
     callback = function(ev)
       local buf = ev.buf
+      if not api.nvim_buf_is_valid(buf) then
+        return
+      end
       local ft = api.nvim_get_option_value("filetype", {buf = buf})
       if ((not vim.tbl_contains(config.ignored_filetypes, ft))
         and not (config.ignore_cb and config.ignore_cb(buf))
@@ -146,10 +152,13 @@ function M.setup(cfg)
 
   -- see if we need to cancel after filetype has been set!
   -- this is a race condition with the previous autocommands
-  vim.api.nvim_create_autocmd({ "FileType" }, {
+  api.nvim_create_autocmd({ "FileType" }, {
     pattern = { "*" },
     callback = function(ev)
       local buf = ev.buf
+      if not api.nvim_buf_is_valid(buf) then
+        return
+      end
       local ft = api.nvim_get_option_value("filetype", {buf = buf})
       if vim.tbl_contains(config.ignored_filetypes, ft)
         or (config.ignore_cb and config.ignore_cb(buf)
